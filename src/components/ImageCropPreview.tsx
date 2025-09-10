@@ -1,16 +1,19 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { X } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { ImageData } from './ImageGallery';
 
 interface ImageCropPreviewProps {
   imageData: ImageData;
   onCropPositionChange: (cropY: number) => void;
+  onRemove?: () => void;
 }
 
 const CROP_ASPECT_RATIO = 800 / 480; // 5:3 aspect ratio
 
-export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropPreviewProps) => {
+export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: ImageCropPreviewProps) => {
   const [isDragging, setIsDragging] = useState(false);
   const [cropY, setCropY] = useState(imageData.cropY);
   const [displayDimensions, setDisplayDimensions] = useState({ width: 0, height: 0 });
@@ -152,6 +155,22 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
             className="relative bg-muted rounded-md overflow-hidden"
             style={{ minHeight: '200px' }}
           >
+            {onRemove && (
+              <Button
+                type="button"
+                variant="secondary"
+                size="icon"
+                title="Remove image"
+                aria-label="Remove image"
+                className="absolute top-2 right-2 z-20"
+                onClick={(e) => {
+                  e.stopPropagation();
+                  onRemove();
+                }}
+              >
+                <X className="h-4 w-4" />
+              </Button>
+            )}
             <img
               ref={imageRef}
               src={imageData.url}

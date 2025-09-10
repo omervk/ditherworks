@@ -21,9 +21,10 @@ export interface ImageData {
 interface ImageGalleryProps {
   images: File[];
   onConvert: (imageData: ImageData[]) => void;
+  onRemoveImage?: (index: number) => void;
 }
 
-export const ImageGallery = ({ images, onConvert }: ImageGalleryProps) => {
+export const ImageGallery = ({ images, onConvert, onRemoveImage }: ImageGalleryProps) => {
   const [imageData, setImageData] = useState<ImageData[]>([]);
   const [loading, setLoading] = useState(false);
   const [converting, setConverting] = useState(false);
@@ -186,6 +187,7 @@ export const ImageGallery = ({ images, onConvert }: ImageGalleryProps) => {
                   key={data.file.name}
                   imageData={data}
                   onCropPositionChange={(cropY) => updateCropPosition(index, cropY)}
+                  onRemove={() => onRemoveImage?.(index)}
                 />
               ))}
             </div>

@@ -24,6 +24,11 @@ const Index = () => {
     return true;
   };
 
+  const handleRemoveImage = (index: number) => {
+    setImages((prev) => prev.filter((_, i) => i !== index));
+    toast.message('Removed image from selection');
+  };
+
   return (
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -93,6 +98,7 @@ const Index = () => {
             <ImageGallery 
               images={images} 
               onConvert={handleConvert}
+              onRemoveImage={handleRemoveImage}
             />
           </>
         )}
