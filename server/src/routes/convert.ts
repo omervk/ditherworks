@@ -67,9 +67,17 @@ export async function registerConvertRoute(app: FastifyInstance) {
     reply.header('Content-Disposition', 'attachment; filename="converted.zip"');
 
     const archive = archiver('zip', { zlib: { level: 9 } });
-    archive.on('warning', (err) => req.log.warn({ err }, 'zip warning'));
-    archive.on('error', (err) => {
+    archive.on('warning', (err: unknown) => req.log.warn({ err }, 'zip warning'));
+    archive.on('error', (err: unknown) => {
       req.log.error({ err }, 'zip error');
+      try { archive.destroy(); } catch {}
+      if (!reply.sent) {
+        // If streaming hasn't started, return JSON error
+        reply.code(500).type('application/json').send({ error: 'zip error' });
+      } else {
+        // If streaming already started, just destroy the connection
+        try { reply.raw.destroy(err as Error); } catch {}
+      }
     });
 
     // Pipe archive to reply
@@ -98,9 +106,18 @@ export async function registerConvertRoute(app: FastifyInstance) {
       await archive.finalize();
     } catch (err) {
       req.log.error({ err }, 'convert failed');
-      if (!reply.sent) reply.code(500).send({ error: 'conversion failed' });
+      try { archive.destroy(); } catch {}
+      if (!reply.sent) {
+        return reply
+          .code(500)
+          .type('application/json')
+          .send({ error: 'conversion failed' });
+      }
+      // If already streaming, ensure the socket is closed
+      try { reply.raw.destroy(err as Error); } catch {}
+      return; // do not return reply instance
     }
 
-    return reply; // stream handled
+    return; // stream handled; do not return reply instance
   });
 }

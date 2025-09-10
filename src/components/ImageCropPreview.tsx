@@ -27,10 +27,10 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
 
   // Calculate display dimensions and crop rectangle
   const updateDimensions = useCallback(() => {
-    if (!imageRef.current || !containerRef.current) return;
+    if (!containerRef.current) return;
 
     const container = containerRef.current;
-    const containerWidth = container.clientWidth - 32; // Account for padding
+    const containerWidth = container.clientWidth;
     const maxHeight = 400;
 
     // Calculate display dimensions maintaining aspect ratio
@@ -43,13 +43,6 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
       displayWidth = displayHeight * imageAspect;
     }
 
-    console.log('Image dimensions:', {
-      natural: { width: imageData.naturalWidth, height: imageData.naturalHeight },
-      display: { width: displayWidth, height: displayHeight },
-      container: containerWidth,
-      aspect: imageAspect
-    });
-
     setDisplayDimensions({ width: displayWidth, height: displayHeight });
   }, [imageData.naturalWidth, imageData.naturalHeight]);
 
@@ -57,6 +50,14 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
     updateDimensions();
     window.addEventListener('resize', updateDimensions);
     return () => window.removeEventListener('resize', updateDimensions);
+  }, [updateDimensions]);
+
+  // Observe container size changes for reliable measurements
+  useEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver(() => updateDimensions());
+    observer.observe(containerRef.current);
+    return () => observer.disconnect();
   }, [updateDimensions]);
 
   // Calculate crop rectangle dimensions and position
@@ -102,7 +103,7 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
     
     if (!cropRect) return;
 
-    const relativeY = e.clientY - rect.top - 16; // Account for padding
+    const relativeY = e.clientY - rect.top;
     const newY = Math.max(0, Math.min(cropRect.maxY, relativeY - cropRect.height / 2));
     // Convert display-space Y back to original pixel value
     const displayScaleY = displayDimensions.height / imageData.naturalHeight;
@@ -151,59 +152,52 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
             className="relative bg-muted rounded-md overflow-hidden"
             style={{ minHeight: '200px' }}
           >
-            {displayDimensions.width > 0 && (
-              <>
-                <img
-                  ref={imageRef}
-                  src={imageData.url}
-                  alt={fileName}
-                  className="block"
-                  style={{
-                    width: displayDimensions.width,
-                    height: displayDimensions.height,
-                  }}
-                  draggable={false}
-                />
+            <img
+              ref={imageRef}
+              src={imageData.url}
+              alt={fileName}
+              className="block w-full h-auto"
+              style={{ maxHeight: 400 }}
+              draggable={false}
+            />
 
-                {cropRect && (
-                  <>
-                    {/* Overlay dimming */}
-                    <div className="absolute inset-0 bg-overlay/30 pointer-events-none" />
-                    
-                    {/* Crop rectangle */}
-                    <div
-                      className={`
-                        absolute border-4 border-primary bg-primary/5 cursor-move z-10
-                        transition-all duration-150 pointer-events-auto shadow-lg
-                        ${isDragging ? 'border-primary/80 bg-primary/10 scale-[1.01]' : 'hover:border-primary/90 hover:bg-primary/10'}
-                      `}
-                      style={{
-                        left: cropRect.x,
-                        top: cropRect.y,
-                        width: cropRect.width,
-                        height: cropRect.height,
-                        minHeight: '60px',
-                        boxShadow: '0 0 0 2px rgba(255,255,255,0.8), inset 0 0 0 1px rgba(0,0,0,0.1)'
-                      }}
-                      onMouseDown={handleMouseDown}
-                    >
-                      {/* Crop handles */}
-                      <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 h-3 bg-primary rounded-b-md shadow-sm" />
-                      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-3 bg-primary rounded-t-md shadow-sm" />
-                      
-                      {/* Crop info */}
-                      <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-3 py-1 rounded-md text-xs font-semibold shadow-sm">
-                        800×480
-                      </div>
-                      
-                      {/* Corner indicators */}
-                      <div className="absolute top-1 left-1 w-2 h-2 bg-primary rounded-full" />
-                      <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
-                      <div className="absolute bottom-1 left-1 w-2 h-2 bg-primary rounded-full" />
-                      <div className="absolute bottom-1 right-1 w-2 h-2 bg-primary rounded-full" />
-                    </div>
-                  </>
-                )}
+            {cropRect && (
+              <>
+                {/* Overlay dimming */}
+                <div className="absolute inset-0 bg-overlay/30 pointer-events-none" />
+                
+                {/* Crop rectangle */}
+                <div
+                  className={`
+                    absolute border-4 border-primary bg-primary/5 cursor-move z-10
+                    transition-all duration-150 pointer-events-auto shadow-lg
+                    ${isDragging ? 'border-primary/80 bg-primary/10 scale-[1.01]' : 'hover:border-primary/90 hover:bg-primary/10'}
+                  `}
+                  style={{
+                    left: cropRect.x,
+                    top: cropRect.y,
+                    width: cropRect.width,
+                    height: cropRect.height,
+                    minHeight: '60px',
+                    boxShadow: '0 0 0 2px rgba(255,255,255,0.8), inset 0 0 0 1px rgba(0,0,0,0.1)'
+                  }}
+                  onMouseDown={handleMouseDown}
+                >
+                  {/* Crop handles */}
+                  <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 h-3 bg-primary rounded-b-md shadow-sm" />
+                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-3 bg-primary rounded-t-md shadow-sm" />
+                  
+                  {/* Crop info */}
+                  <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-3 py-1 rounded-md text-xs font-semibold shadow-sm">
+                    800×480
+                  </div>
+                  
+                  {/* Corner indicators */}
+                  <div className="absolute top-1 left-1 w-2 h-2 bg-primary rounded-full" />
+                  <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+                  <div className="absolute bottom-1 left-1 w-2 h-2 bg-primary rounded-full" />
+                  <div className="absolute bottom-1 right-1 w-2 h-2 bg-primary rounded-full" />
+                </div>
               </>
             )}
           </div>

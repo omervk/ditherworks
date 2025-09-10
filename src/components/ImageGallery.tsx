@@ -37,13 +37,15 @@ export const ImageGallery = ({ images, onConvert }: ImageGalleryProps) => {
 
     setLoading(true);
     setLoadProgress(0);
+    setImageData([]);
+
+    const urlsToRevoke: string[] = [];
     
     const loadImages = async () => {
-      const newImageData: ImageData[] = [];
-      
       for (let i = 0; i < images.length; i++) {
         const file = images[i];
         const url = URL.createObjectURL(file);
+        urlsToRevoke.push(url);
         
         try {
           // Get image dimensions
@@ -54,44 +56,44 @@ export const ImageGallery = ({ images, onConvert }: ImageGalleryProps) => {
             img.src = url;
           });
 
-          // Request backend to suggest initial crop position (pixels from top)
-          let y = 0;
-          try {
-            const suggest = await suggestCrop(file);
-            y = suggest.y || 0;
-          } catch (e) {
-            // Fallback to top if suggest fails
-            y = 0;
-          }
-          
-          newImageData.push({
-            file,
-            url,
-            cropY: y,
-            naturalWidth: img.naturalWidth,
-            naturalHeight: img.naturalHeight,
-          });
-          
+          // Show immediately with default crop position
+          setImageData(prev => [
+            ...prev,
+            {
+              file,
+              url,
+              cropY: 0,
+              naturalWidth: img.naturalWidth,
+              naturalHeight: img.naturalHeight,
+            },
+          ]);
+
+          // Fetch suggestion asynchronously and update cropY when available
+          suggestCrop(file)
+            .then((suggest) => {
+              const suggestedY = suggest?.y ?? 0;
+              setImageData(prev => prev.map(d => d.file === file ? { ...d, cropY: suggestedY } : d));
+            })
+            .catch(() => {
+              // keep default y=0
+            });
+
           setLoadProgress(((i + 1) / images.length) * 100);
         } catch (error) {
           console.error('Failed to load image:', file.name, error);
           toast.error(`Failed to load ${file.name}`);
         }
       }
-      
-      setImageData(newImageData);
+
       setLoading(false);
-      
-      if (newImageData.length > 0) {
-        toast.success(`Loaded ${newImageData.length} images successfully`);
-      }
+      toast.success(`Loaded ${images.length} images successfully`);
     };
 
     loadImages();
     
-    // Cleanup URLs when component unmounts
+    // Cleanup URLs when component unmounts or images change
     return () => {
-      imageData.forEach(data => URL.revokeObjectURL(data.url));
+      urlsToRevoke.forEach(url => URL.revokeObjectURL(url));
     };
   }, [images]);
 
