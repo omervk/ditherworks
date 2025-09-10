@@ -7,6 +7,8 @@ import { Badge } from '@/components/ui/badge';
 import { Images, Crop, Check, Loader2 } from 'lucide-react';
 import { toast } from 'sonner';
 
+const CROP_ASPECT_RATIO = 800 / 480; // 5:3 aspect ratio
+
 export interface ImageData {
   file: File;
   url: string;
@@ -51,8 +53,8 @@ export const ImageGallery = ({ images, onConvert }: ImageGalleryProps) => {
             img.src = url;
           });
 
-          // Simulate backend call to get initial crop position
-          const response = await simulateBackendCropPosition(url);
+          // Simulate backend call to get initial crop position (in pixels)
+          const response = await simulateBackendCropPosition(img.naturalWidth, img.naturalHeight);
           
           newImageData.push({
             file,
@@ -85,14 +87,17 @@ export const ImageGallery = ({ images, onConvert }: ImageGalleryProps) => {
     };
   }, [images]);
 
-  const simulateBackendCropPosition = async (imageUrl: string): Promise<{ cropY: number }> => {
+  const simulateBackendCropPosition = async (
+    naturalWidth: number,
+    naturalHeight: number
+  ): Promise<{ cropY: number }> => {
     // Simulate API delay
     await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
     
-    // Return a random crop position (in a real app, this would come from your backend)
-    return {
-      cropY: Math.random() * 100 // Random Y position as percentage
-    };
+    // Return a random pixel Y within valid range (in a real app, from backend)
+    const cropHeight = naturalWidth / CROP_ASPECT_RATIO;
+    const maxY = Math.max(0, naturalHeight - cropHeight);
+    return { cropY: Math.random() * maxY };
   };
 
   const updateCropPosition = (index: number, cropY: number) => {

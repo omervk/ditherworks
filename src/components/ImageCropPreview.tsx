@@ -19,8 +19,11 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
 
   // Update crop position when imageData changes
   useEffect(() => {
-    setCropY(imageData.cropY);
-  }, [imageData.cropY]);
+    const naturalCropHeight = imageData.naturalWidth / CROP_ASPECT_RATIO;
+    const naturalMaxY = Math.max(0, imageData.naturalHeight - naturalCropHeight);
+    const clamped = Math.max(0, Math.min(naturalMaxY, imageData.cropY));
+    setCropY(clamped);
+  }, [imageData.cropY, imageData.naturalWidth, imageData.naturalHeight]);
 
   // Calculate display dimensions and crop rectangle
   const updateDimensions = useCallback(() => {
@@ -62,13 +65,15 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
 
     const cropWidth = displayDimensions.width;
     const cropHeight = cropWidth / CROP_ASPECT_RATIO;
-    
+
     // Ensure crop height doesn't exceed display height
-    const maxCropHeight = Math.min(cropHeight, displayDimensions.height * 0.9);
-    const actualCropHeight = maxCropHeight;
-    
+    const actualCropHeight = Math.min(cropHeight, displayDimensions.height * 0.9);
+
+    // Convert original pixel cropY to display-space Y using scale
+    const displayScaleY = displayDimensions.height / imageData.naturalHeight;
     const maxY = Math.max(0, displayDimensions.height - actualCropHeight);
-    const actualY = maxY > 0 ? Math.max(0, Math.min(maxY, (cropY / 100) * maxY)) : 0;
+    const scaledY = cropY * displayScaleY;
+    const actualY = maxY > 0 ? Math.max(0, Math.min(maxY, scaledY)) : 0;
 
     const rect = {
       width: cropWidth,
@@ -99,11 +104,13 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
 
     const relativeY = e.clientY - rect.top - 16; // Account for padding
     const newY = Math.max(0, Math.min(cropRect.maxY, relativeY - cropRect.height / 2));
-    const newCropY = cropRect.maxY > 0 ? (newY / cropRect.maxY) * 100 : 0;
+    // Convert display-space Y back to original pixel value
+    const displayScaleY = displayDimensions.height / imageData.naturalHeight;
+    const newCropY = displayScaleY > 0 ? newY / displayScaleY : 0;
 
     setCropY(newCropY);
     onCropPositionChange(newCropY);
-  }, [isDragging, onCropPositionChange]);
+  }, [isDragging, onCropPositionChange, displayDimensions.height, imageData.naturalHeight]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);
@@ -204,7 +211,7 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
           {/* Dimensions info */}
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Original: {imageData.naturalWidth}×{imageData.naturalHeight}</span>
-            <span>Crop Y: {Math.round(cropY)}%</span>
+            <span>Crop Y: {Math.round(cropY)}px</span>
           </div>
         </div>
       </CardContent>
