@@ -32,13 +32,20 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
 
     // Calculate display dimensions maintaining aspect ratio
     const imageAspect = imageData.naturalWidth / imageData.naturalHeight;
-    let displayWidth = containerWidth;
+    let displayWidth = Math.max(containerWidth, 200); // Minimum width
     let displayHeight = displayWidth / imageAspect;
 
     if (displayHeight > maxHeight) {
       displayHeight = maxHeight;
       displayWidth = displayHeight * imageAspect;
     }
+
+    console.log('Image dimensions:', {
+      natural: { width: imageData.naturalWidth, height: imageData.naturalHeight },
+      display: { width: displayWidth, height: displayHeight },
+      container: containerWidth,
+      aspect: imageAspect
+    });
 
     setDisplayDimensions({ width: displayWidth, height: displayHeight });
   }, [imageData.naturalWidth, imageData.naturalHeight]);
@@ -51,20 +58,29 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
 
   // Calculate crop rectangle dimensions and position
   const getCropRectangle = () => {
-    if (displayDimensions.width === 0) return null;
+    if (displayDimensions.width === 0 || displayDimensions.height === 0) return null;
 
     const cropWidth = displayDimensions.width;
     const cropHeight = cropWidth / CROP_ASPECT_RATIO;
-    const maxY = displayDimensions.height - cropHeight;
-    const actualY = Math.max(0, Math.min(maxY, (cropY / 100) * maxY));
+    
+    // Ensure crop height doesn't exceed display height
+    const maxCropHeight = Math.min(cropHeight, displayDimensions.height * 0.9);
+    const actualCropHeight = maxCropHeight;
+    
+    const maxY = Math.max(0, displayDimensions.height - actualCropHeight);
+    const actualY = maxY > 0 ? Math.max(0, Math.min(maxY, (cropY / 100) * maxY)) : 0;
 
-    return {
+    const rect = {
       width: cropWidth,
-      height: cropHeight,
+      height: actualCropHeight,
       x: 0,
       y: actualY,
       maxY
     };
+
+    console.log('Crop rectangle:', rect, 'cropY:', cropY, 'displayDimensions:', displayDimensions);
+
+    return rect;
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
@@ -150,26 +166,34 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange }: ImageCropP
                     {/* Crop rectangle */}
                     <div
                       className={`
-                        absolute border-2 border-crop-overlay bg-transparent cursor-move
-                        transition-all duration-150 pointer-events-auto
-                        ${isDragging ? 'shadow-lg scale-[1.02]' : 'hover:shadow-md hover:border-crop-overlay/80'}
+                        absolute border-4 border-primary bg-primary/5 cursor-move z-10
+                        transition-all duration-150 pointer-events-auto shadow-lg
+                        ${isDragging ? 'border-primary/80 bg-primary/10 scale-[1.01]' : 'hover:border-primary/90 hover:bg-primary/10'}
                       `}
                       style={{
                         left: cropRect.x,
                         top: cropRect.y,
                         width: cropRect.width,
                         height: cropRect.height,
+                        minHeight: '60px',
+                        boxShadow: '0 0 0 2px rgba(255,255,255,0.8), inset 0 0 0 1px rgba(0,0,0,0.1)'
                       }}
                       onMouseDown={handleMouseDown}
                     >
                       {/* Crop handles */}
-                      <div className="absolute -top-1 left-1/2 transform -translate-x-1/2 w-8 h-2 bg-crop-overlay rounded-b-sm opacity-80" />
-                      <div className="absolute -bottom-1 left-1/2 transform -translate-x-1/2 w-8 h-2 bg-crop-overlay rounded-t-sm opacity-80" />
+                      <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 h-3 bg-primary rounded-b-md shadow-sm" />
+                      <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-3 bg-primary rounded-t-md shadow-sm" />
                       
                       {/* Crop info */}
-                      <div className="absolute top-1 left-1 bg-crop-overlay text-crop-handle px-2 py-1 rounded text-xs font-medium">
+                      <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-3 py-1 rounded-md text-xs font-semibold shadow-sm">
                         800×480
                       </div>
+                      
+                      {/* Corner indicators */}
+                      <div className="absolute top-1 left-1 w-2 h-2 bg-primary rounded-full" />
+                      <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
+                      <div className="absolute bottom-1 left-1 w-2 h-2 bg-primary rounded-full" />
+                      <div className="absolute bottom-1 right-1 w-2 h-2 bg-primary rounded-full" />
                     </div>
                   </>
                 )}
