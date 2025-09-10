@@ -6,6 +6,7 @@ import { Badge } from '@/components/ui/badge';
 import { Crop, Info } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
+import { convertBatch, downloadBlob } from '@/lib/api';
 
 const Index = () => {
   const [images, setImages] = useState<File[]>([]);
@@ -16,29 +17,11 @@ const Index = () => {
   };
 
   const handleConvert = async (imageData: ImageData[]) => {
-    // Simulate conversion process
     toast.info('Starting conversion process...');
-    
-    // In a real application, this would send data to your backend
-    const conversionData = imageData.map(data => ({
-      fileName: data.file.name,
-      cropY: data.cropY,
-      originalDimensions: {
-        width: data.naturalWidth,
-        height: data.naturalHeight
-      },
-      targetDimensions: {
-        width: 800,
-        height: 480
-      }
-    }));
-    
-    console.log('Conversion data:', conversionData);
-    
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 2000));
-    
-    return conversionData;
+    const toSend = imageData.map((d) => ({ file: d.file, y: d.cropY }));
+    const blob = await convertBatch(toSend);
+    downloadBlob(blob, 'converted.zip');
+    return true;
   };
 
   return (

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { Images, Crop, Check, Loader2 } from 'lucide-react';
+import { suggestCrop } from '@/lib/api';
 import { toast } from 'sonner';
 
 const CROP_ASPECT_RATIO = 800 / 480; // 5:3 aspect ratio
@@ -53,13 +54,20 @@ export const ImageGallery = ({ images, onConvert }: ImageGalleryProps) => {
             img.src = url;
           });
 
-          // Simulate backend call to get initial crop position (in pixels)
-          const response = await simulateBackendCropPosition(img.naturalWidth, img.naturalHeight);
+          // Request backend to suggest initial crop position (pixels from top)
+          let y = 0;
+          try {
+            const suggest = await suggestCrop(file);
+            y = suggest.y || 0;
+          } catch (e) {
+            // Fallback to top if suggest fails
+            y = 0;
+          }
           
           newImageData.push({
             file,
             url,
-            cropY: response.cropY,
+            cropY: y,
             naturalWidth: img.naturalWidth,
             naturalHeight: img.naturalHeight,
           });
@@ -87,18 +95,7 @@ export const ImageGallery = ({ images, onConvert }: ImageGalleryProps) => {
     };
   }, [images]);
 
-  const simulateBackendCropPosition = async (
-    naturalWidth: number,
-    naturalHeight: number
-  ): Promise<{ cropY: number }> => {
-    // Simulate API delay
-    await new Promise(resolve => setTimeout(resolve, 200 + Math.random() * 300));
-    
-    // Return a random pixel Y within valid range (in a real app, from backend)
-    const cropHeight = naturalWidth / CROP_ASPECT_RATIO;
-    const maxY = Math.max(0, naturalHeight - cropHeight);
-    return { cropY: Math.random() * maxY };
-  };
+  // removed simulateBackendCropPosition in favor of real backend API
 
   const updateCropPosition = (index: number, cropY: number) => {
     setImageData(prev => 
