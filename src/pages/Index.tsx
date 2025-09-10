@@ -38,11 +38,10 @@ const Index = () => {
             <div className="p-3 rounded-full bg-gradient-primary">
               <Crop className="h-6 w-6 text-primary-foreground" />
             </div>
-            <h1 className="text-3xl font-bold tracking-tight">Image Crop Tool</h1>
+            <h1 className="text-3xl font-bold tracking-tight">Image Conversion for PhotoPainter</h1>
           </div>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto">
-            Upload images and adjust crop positions to convert them to 800×480 format.
-            Drag the crop rectangle to position it exactly where you want.
+            Upload images, then drag the crop rectangle to position it exactly where you want.
           </p>
         </div>
 
@@ -54,8 +53,8 @@ const Index = () => {
                 <Info className="h-4 w-4 text-info" />
               </div>
               <div>
-                <p className="font-medium text-sm">Target Format</p>
-                <p className="text-xs text-muted-foreground">800×480 pixels</p>
+                <p className="font-medium text-sm">Local-only</p>
+                <p className="text-xs text-muted-foreground">Everything stays on your machine</p>
               </div>
             </CardContent>
           </Card>
@@ -67,7 +66,7 @@ const Index = () => {
               </div>
               <div>
                 <p className="font-medium text-sm">Smart Cropping</p>
-                <p className="text-xs text-muted-foreground">AI-suggested positions</p>
+                <p className="text-xs text-muted-foreground">Face-detection suggests optimal crop</p>
               </div>
             </CardContent>
           </Card>
@@ -82,7 +81,7 @@ const Index = () => {
                 <p className="text-xs text-muted-foreground">Process all at once</p>
               </div>
             </CardContent>
-          </Card>
+          </Card> 
         </div>
 
         {/* Upload Section */}
