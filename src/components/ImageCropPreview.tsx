@@ -19,6 +19,8 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: 
   const [displayDimensions, setDisplayDimensions] = useState({ width: 0, height: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(null);
+  const imageAspect = imageData.naturalWidth / imageData.naturalHeight;
+  const isFullWidthMode = imageAspect <= CROP_ASPECT_RATIO; // matches server logic
 
   // Update crop position when imageData changes
   useEffect(() => {
@@ -67,35 +69,31 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: 
   const getCropRectangle = () => {
     if (displayDimensions.width === 0 || displayDimensions.height === 0) return null;
 
-    const cropWidth = displayDimensions.width;
-    const cropHeight = cropWidth / CROP_ASPECT_RATIO;
+    if (isFullWidthMode) {
+      // Full-width crop fits; allow vertical movement
+      const cropWidth = displayDimensions.width;
+      const cropHeight = cropWidth / CROP_ASPECT_RATIO;
+      const displayScaleY = displayDimensions.height / imageData.naturalHeight;
+      const maxY = Math.max(0, displayDimensions.height - cropHeight);
+      const scaledY = cropY * displayScaleY;
+      const y = maxY > 0 ? Math.max(0, Math.min(maxY, scaledY)) : 0;
+      const rect = { width: cropWidth, height: cropHeight, x: 0, y, maxY } as const;
+      return rect;
+    }
 
-    // Ensure crop height doesn't exceed display height
-    const actualCropHeight = Math.min(cropHeight, displayDimensions.height * 0.9);
-
-    // Convert original pixel cropY to display-space Y using scale
-    const displayScaleY = displayDimensions.height / imageData.naturalHeight;
-    const maxY = Math.max(0, displayDimensions.height - actualCropHeight);
-    const scaledY = cropY * displayScaleY;
-    const actualY = maxY > 0 ? Math.max(0, Math.min(maxY, scaledY)) : 0;
-
-    const rect = {
-      width: cropWidth,
-      height: actualCropHeight,
-      x: 0,
-      y: actualY,
-      maxY
-    };
-
-    console.log('Crop rectangle:', rect, 'cropY:', cropY, 'displayDimensions:', displayDimensions);
-
+    // Image is wider than target; use full height, center horizontally, no vertical movement
+    const cropHeight = displayDimensions.height;
+    const cropWidth = cropHeight * CROP_ASPECT_RATIO;
+    const x = Math.max(0, (displayDimensions.width - cropWidth) / 2);
+    const rect = { width: cropWidth, height: cropHeight, x, y: 0, maxY: 0 } as const;
     return rect;
   };
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
+    if (!isFullWidthMode) return; // no drag when using full-height mode
     setIsDragging(true);
-  }, []);
+  }, [isFullWidthMode]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!isDragging || !containerRef.current) return;
@@ -103,18 +101,15 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: 
     const container = containerRef.current;
     const rect = container.getBoundingClientRect();
     const cropRect = getCropRectangle();
-    
     if (!cropRect) return;
 
     const relativeY = e.clientY - rect.top;
     const newY = Math.max(0, Math.min(cropRect.maxY, relativeY - cropRect.height / 2));
-    // Convert display-space Y back to original pixel value
     const displayScaleY = displayDimensions.height / imageData.naturalHeight;
     const newCropY = displayScaleY > 0 ? newY / displayScaleY : 0;
-
     setCropY(newCropY);
     onCropPositionChange(newCropY);
-  }, [isDragging, onCropPositionChange, displayDimensions.height, imageData.naturalHeight]);
+  }, [isDragging, onCropPositionChange, displayDimensions.height, imageData.naturalHeight, getCropRectangle]);
 
   const handleMouseUp = useCallback(() => {
     setIsDragging(false);

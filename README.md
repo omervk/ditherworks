@@ -230,9 +230,8 @@ You can serve the frontend’s `dist/` with any static web server (or a CDN) and
 ## Roadmap
 
 - Face detection–based crop suggestions (`docs/prd/face-detection.md`)
-- Additional aspect presets (e.g., 1920×1080)
+- Horizontal crop control: add `x` coordinate and horizontal sliding of the crop window (UI + server)
 - Keyboard nudging, zoom, and accessibility improvements
-- Persisted manifests and re‑download
 
 ## Troubleshooting
 
