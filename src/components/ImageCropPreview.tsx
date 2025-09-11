@@ -175,8 +175,8 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: 
               ref={imageRef}
               src={imageData.url}
               alt={fileName}
-              className="block w-full h-auto"
-              style={{ maxHeight: 400 }}
+              className="block"
+              style={{ width: displayDimensions.width, height: displayDimensions.height }}
               draggable={false}
             />
 
