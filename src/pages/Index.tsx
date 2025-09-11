@@ -39,10 +39,10 @@ const Index = () => {
     toast.success(`Loaded ${files.length} image${files.length === 1 ? '' : 's'}`);
   };
 
-  const handleConvert = async (imageData: ImageData[]) => {
+  const handleConvert = async (imageData: ImageData[], jobId: string) => {
     toast.info('Starting conversion process...');
     const toSend = imageData.map((d) => ({ file: d.file, y: d.cropY }));
-    const blob = await convertBatch(toSend);
+    const blob = await convertBatch(toSend, jobId);
     downloadBlob(blob, 'converted.zip');
     return true;
   };

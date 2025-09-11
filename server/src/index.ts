@@ -3,6 +3,7 @@ import multipart from '@fastify/multipart';
 import cors from '@fastify/cors';
 import { registerSuggestRoute } from './routes/suggest';
 import { registerConvertRoute } from './routes/convert';
+import { registerProgressRoute } from './routes/progress';
 
 const PORT = 8787;
 const HOST = '127.0.0.1';
@@ -31,6 +32,7 @@ async function buildServer() {
 
   await registerSuggestRoute(app);
   await registerConvertRoute(app);
+  await registerProgressRoute(app);
 
   return app;
 }

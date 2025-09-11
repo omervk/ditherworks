@@ -99,7 +99,8 @@ Scripts:
     - `manifest`: JSON string, schema below (required)
     - `files`: repeated file field for each image (required)
   - Manifest schema (JSON):
-    - `{ images: Array<{ fileName: string; y: number }> }`
+    - `{ jobId?: string; images: Array<{ fileName: string; y: number }> }`
+      - `jobId` (optional): a client-generated identifier used to correlate Server‑Sent Events (SSE) progress updates for this request
       - `fileName` must exactly match the uploaded file’s original name
       - `y` is the number of pixels from the top of the image where cropping should begin
   - Response (default synchronous):
@@ -107,6 +108,19 @@ Scripts:
     - Streamed ZIP with processed images using output naming: `<base>_800x480.<ext>`
   - Errors:
     - 400 invalid manifest/mismatched files, 413 payload too large, 500 on processing
+
+### 5.4 Progress (SSE)
+- `GET /api/progress/:jobId`
+  - Response: `text/event-stream` (SSE)
+  - Events and payload shape:
+    - `init`: `{ type: 'init', current: number, total: number }`
+    - `progress`: `{ type: 'progress', current: number, total: number, fileName?: string }`
+    - `complete`: `{ type: 'complete', current: number, total: number }`
+    - `error`: `{ type: 'error', current: number, total: number, message?: string }`
+  - Semantics:
+    - `total` equals the number of images in the corresponding convert manifest
+    - `current` increments by one per successfully processed image
+    - Stream remains open until `complete` or `error`, then the server closes it
 
 ## 6. Request/Response Examples
 
@@ -119,10 +133,16 @@ curl -sS -X POST http://127.0.0.1:8787/api/suggest-crop \
 Convert (curl)
 ```bash
 curl -sS -X POST http://127.0.0.1:8787/api/convert \
-  -F manifest='{"images":[{"fileName":"a.jpg","y":23},{"fileName":"b.png","y":51.2}]}' \
+  -F manifest='{"jobId":"YOUR_JOB_ID","images":[{"fileName":"a.jpg","y":23},{"fileName":"b.png","y":51.2}]}' \
   -F files=@/path/to/a.jpg \
   -F files=@/path/to/b.png \
   -o converted.zip
+```
+
+Progress (SSE)
+```bash
+# Replace YOUR_JOB_ID with the same ID used in the convert manifest
+curl -N http://127.0.0.1:8787/api/progress/YOUR_JOB_ID
 ```
 
 ## 7. Algorithm & Crop Math
@@ -146,9 +166,10 @@ Conversion steps (per image)
 Performance
 - Process images sequentially by default; allow small concurrency (e.g., 2–4) with a queue to cap memory.
 - Set `sharp.concurrency(2)`; tune to CPU cores and thermals.
-- Use a small p-limit queue (2–4) around per-file pipelines to avoid RAM spikes.
+- Use a small in-process concurrency limiter (2–4) around per-file pipelines to avoid RAM spikes.
 - Stream ZIP entries as each image completes; do not buffer entire archive.
 - Apply backpressure: await stream `drain` events on ZIP output when needed.
+- Emit SSE progress events after each image completes to update clients in real time.
 
 ### 7.1 BMP conversion (sharp + ImageMagick CLI)
 
@@ -255,6 +276,7 @@ Notes
 - Use Vite proxy to call `/api/...` without CORS.
 - For suggest flow: send a single image as `multipart/form-data` and use response `y` to set initial slider value.
 - For convert flow: build `FormData` with `manifest` JSON + `files[]`. On success, stream download of the ZIP.
+- For progress: generate a `jobId` on the client, include it in the convert `manifest`, and open an `EventSource('/api/progress/:jobId')` to consume `init`, `progress`, `complete`, and `error` events while the ZIP streams back.
 
 ## 13. Future Extensions
 - Optional async jobs for very large batches.

@@ -1,7 +1,7 @@
 import { FastifyInstance } from 'fastify';
 import archiver from 'archiver';
-import pLimit from 'p-limit';
 import { convertToBmp565WithDither } from '../lib/image';
+import { startJob, reportProgress, completeJob, errorJob } from '../lib/progress';
 
 // Note: p-limit is not installed; implement a minimal concurrency limiter inline
 function createLimiter(maxConcurrent: number) {
@@ -30,7 +30,7 @@ export async function registerConvertRoute(app: FastifyInstance) {
   app.post('/api/convert', async (req, reply) => {
     const parts = req.parts();
 
-    type Manifest = { images: Array<{ fileName: string; y: number }> };
+    type Manifest = { jobId?: string; images: Array<{ fileName: string; y: number }> };
     const files: Record<string, Buffer> = {};
     let manifestObj: Manifest | null = null;
 
@@ -63,6 +63,8 @@ export async function registerConvertRoute(app: FastifyInstance) {
       }
     }
 
+    const jobId = manifestObj.jobId || '';
+
     reply.header('Content-Type', 'application/zip');
     reply.header('Content-Disposition', 'attachment; filename="converted.zip"');
 
@@ -85,7 +87,26 @@ export async function registerConvertRoute(app: FastifyInstance) {
 
     const limit = createLimiter(2);
 
+    // When HTTP response finishes sending, mark job complete for SSE consumers
+    if (jobId) {
+      reply.raw.once('finish', () => {
+        try { completeJob(jobId); } catch {}
+      });
+      reply.raw.once('close', () => {
+        // If connection closed before finish and job still active, mark as error
+        try { errorJob(jobId, 'download connection closed'); } catch {}
+      });
+    }
+
     // Process each image sequentially or with limited concurrency
+    // Start progress tracking
+    if (jobId) {
+      startJob(jobId, manifestObj.images.length);
+      reportProgress(jobId, 0, manifestObj.images.length);
+    }
+
+    let completed = 0;
+
     const tasks = manifestObj.images.map((img) =>
       limit(async () => {
         const input = files[img.fileName];
@@ -94,8 +115,11 @@ export async function registerConvertRoute(app: FastifyInstance) {
           const base = img.fileName.replace(/\.[^/.]+$/, '');
           const outName = `${base}_800x480.bmp`;
           archive.append(bmp, { name: outName });
+          completed++;
+          if (jobId) reportProgress(jobId, completed, manifestObj!.images.length, img.fileName);
         } catch (err) {
           req.log.error({ err, file: img.fileName }, 'failed to convert image');
+          if (jobId) errorJob(jobId, 'conversion failed');
           throw err;
         }
       })

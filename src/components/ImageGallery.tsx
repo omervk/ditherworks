@@ -22,7 +22,7 @@ export interface ImageData {
 
 interface ImageGalleryProps {
   images: File[];
-  onConvert: (imageData: ImageData[]) => void;
+  onConvert: (imageData: ImageData[], jobId: string) => Promise<boolean | void> | void;
   onRemoveImage?: (index: number) => void;
   onClearAll?: () => void;
 }
@@ -32,6 +32,10 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: I
   const [loading, setLoading] = useState(false);
   const [converting, setConverting] = useState(false);
   const [loadProgress, setLoadProgress] = useState(0);
+  const [convertTotal, setConvertTotal] = useState(0);
+  const [currentFile, setCurrentFile] = useState<string | null>(null);
+  const [convertedCount, setConvertedCount] = useState(0);
+  const [downloadFinished, setDownloadFinished] = useState(false);
 
   useEffect(() => {
     if (images.length === 0) {
@@ -154,13 +158,55 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: I
 
   const handleConvert = async () => {
     setConverting(true);
+    setConvertedCount(0);
+    setConvertTotal(imageData.length);
+    setCurrentFile(null);
+    setDownloadFinished(false);
+
+    // Create jobId for backend progress tracking
+    const jobId = (globalThis as any).crypto?.randomUUID
+      ? (globalThis as any).crypto.randomUUID()
+      : `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+
+    let es: EventSource | null = null;
     try {
-      await onConvert(imageData);
+      // Subscribe to progress events
+      es = new EventSource(`/api/progress/${jobId}`);
+      es.addEventListener('init', (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data) as { current: number; total: number };
+          setConvertTotal(data.total || imageData.length);
+          setConvertedCount(data.current || 0);
+        } catch {}
+      });
+      es.addEventListener('progress', (e: MessageEvent) => {
+        try {
+          const data = JSON.parse(e.data) as { current: number; total: number; fileName?: string };
+          setConvertTotal(data.total || imageData.length);
+          setCurrentFile(data.fileName || null);
+          setConvertedCount(data.current || 0);
+        } catch {}
+      });
+      es.addEventListener('complete', () => {
+        setConvertedCount((prev) => Math.max(prev, convertTotal || imageData.length));
+      });
+      es.addEventListener('error', (e: MessageEvent) => {
+        // Either connection issue or server-sent error; show toast if message provided
+        try {
+          const data = JSON.parse((e as any).data || '{}') as { message?: string };
+          if (data.message) toast.error(data.message);
+        } catch {}
+      });
+
+      await onConvert(imageData, jobId);
+      setDownloadFinished(true);
       toast.success('Conversion completed successfully!');
     } catch (error) {
       toast.error('Conversion failed. Please try again.');
     } finally {
+      if (es) es.close();
       setConverting(false);
+      setCurrentFile(null);
     }
   };
 
@@ -226,6 +272,27 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: I
                 <span>{Math.round(loadProgress)}%</span>
               </div>
               <Progress value={loadProgress} />
+            </div>
+          )}
+          {!loading && converting && (
+            <div className="space-y-2 mt-4">
+              <div className="flex items-center justify-between text-sm">
+                <span>
+                  {convertedCount < convertTotal
+                    ? `Converting${currentFile ? `: ${currentFile}` : ''}`
+                    : (downloadFinished ? 'Completed' : 'Finalizing...')}
+                </span>
+                <span>
+                  {convertTotal > 0
+                    ? `${Math.round(((convertedCount || 0) / (convertTotal || 1)) * 100)}% (${convertedCount}/${convertTotal})`
+                    : `0%`}
+                </span>
+              </div>
+              {(() => {
+                const raw = convertTotal > 0 ? ((convertedCount / convertTotal) * 100) : 0;
+                const barValue = convertedCount >= convertTotal && !downloadFinished ? Math.min(99, raw) : raw;
+                return <Progress value={barValue} />;
+              })()}
             </div>
           )}
         </CardHeader>

@@ -13,12 +13,15 @@ export async function suggestCrop(file: File): Promise<SuggestResponse> {
 }
 
 export async function convertBatch(
-  images: Array<{ file: File; y: number }>
+  images: Array<{ file: File; y: number }>,
+  jobId?: string
 ): Promise<Blob> {
   const form = new FormData();
-  const manifest = {
+  type ConvertManifest = { jobId?: string; images: Array<{ fileName: string; y: number }> };
+  const manifest: ConvertManifest = {
     images: images.map(({ file, y }) => ({ fileName: file.name, y: Math.floor(y) })),
   };
+  if (jobId) manifest.jobId = jobId;
   form.append('manifest', JSON.stringify(manifest));
   for (const { file } of images) {
     form.append('files', file, file.name);
