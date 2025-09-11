@@ -16,6 +16,10 @@ Converted image (800x480, dithered 6-color BMP):
 
 ![](docs/converted.bmp)
 
+Displayed on the PhotoPainter (A):
+
+![](docs/displayed.jpg)
+
 All images used in the project are public domain.
 
 ## Features
