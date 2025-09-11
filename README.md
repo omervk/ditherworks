@@ -16,6 +16,8 @@ Converted image (800x480, dithered 6-color BMP):
 
 ![](docs/converted.bmp)
 
+All images used in the project are public domain.
+
 ## Features
 
 - Local‑only workflow: images never leave your machine
