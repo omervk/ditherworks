@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ImageUpload } from '@/components/ImageUpload';
 import { ImageGallery, ImageData } from '@/components/ImageGallery';
 import { Separator } from '@/components/ui/separator';
@@ -7,13 +7,36 @@ import { Crop, Info } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { convertBatch, downloadBlob } from '@/lib/api';
+import { getAllImages, upsertImages, removeImage as removeStoredImage, clearAllImages, createImageId } from '@/lib/storage';
 
 const Index = () => {
   const [images, setImages] = useState<File[]>([]);
 
-  const handleImagesLoaded = (files: File[]) => {
-    setImages(files);
-    toast.success(`Loaded ${files.length} images`);
+  useEffect(() => {
+    (async () => {
+      try {
+        const stored = await getAllImages();
+        if (stored.length > 0) {
+          const files = stored.map((r) => new File([r.blob], r.name, { type: r.type, lastModified: r.lastModified }));
+          setImages(files);
+          toast.message(`Restored ${files.length} image${files.length === 1 ? '' : 's'}`);
+        }
+      } catch (e) {
+        // ignore
+      }
+    })();
+  }, []);
+
+  const handleImagesLoaded = async (files: File[]) => {
+    try {
+      await upsertImages(files);
+    } catch {}
+    setImages((prev) => {
+      const byId = new Map(prev.map((f) => [createImageId(f), f]));
+      for (const f of files) byId.set(createImageId(f), f);
+      return Array.from(byId.values());
+    });
+    toast.success(`Loaded ${files.length} image${files.length === 1 ? '' : 's'}`);
   };
 
   const handleConvert = async (imageData: ImageData[]) => {
@@ -24,9 +47,24 @@ const Index = () => {
     return true;
   };
 
-  const handleRemoveImage = (index: number) => {
-    setImages((prev) => prev.filter((_, i) => i !== index));
+  const handleRemoveImage = async (index: number) => {
+    setImages((prev) => {
+      const file = prev[index];
+      if (file) {
+        const id = createImageId(file);
+        removeStoredImage(id).catch(() => {});
+      }
+      return prev.filter((_, i) => i !== index);
+    });
     toast.message('Removed image from selection');
+  };
+
+  const handleClearAll = async () => {
+    try {
+      await clearAllImages();
+    } catch {}
+    setImages([]);
+    toast.message('Cleared all images');
   };
 
   return (
@@ -98,6 +136,7 @@ const Index = () => {
               images={images} 
               onConvert={handleConvert}
               onRemoveImage={handleRemoveImage}
+              onClearAll={handleClearAll}
             />
           </>
         )}

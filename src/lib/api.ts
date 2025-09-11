@@ -17,7 +17,7 @@ export async function convertBatch(
 ): Promise<Blob> {
   const form = new FormData();
   const manifest = {
-    images: images.map(({ file, y }) => ({ fileName: file.name, y })),
+    images: images.map(({ file, y }) => ({ fileName: file.name, y: Math.floor(y) })),
   };
   form.append('manifest', JSON.stringify(manifest));
   for (const { file } of images) {

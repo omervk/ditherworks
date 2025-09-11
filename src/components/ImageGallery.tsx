@@ -4,13 +4,15 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
-import { Images, Crop, Check, Loader2 } from 'lucide-react';
+import { Images, Crop, Check, Loader2, Trash2 } from 'lucide-react';
 import { suggestCrop } from '@/lib/api';
 import { toast } from 'sonner';
+import { createImageId, getImageById, updateImageY } from '@/lib/storage';
 
 const CROP_ASPECT_RATIO = 800 / 480; // 5:3 aspect ratio
 
 export interface ImageData {
+  id: string;
   file: File;
   url: string;
   cropY: number;
@@ -22,9 +24,10 @@ interface ImageGalleryProps {
   images: File[];
   onConvert: (imageData: ImageData[]) => void;
   onRemoveImage?: (index: number) => void;
+  onClearAll?: () => void;
 }
 
-export const ImageGallery = ({ images, onConvert, onRemoveImage }: ImageGalleryProps) => {
+export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: ImageGalleryProps) => {
   const [imageData, setImageData] = useState<ImageData[]>([]);
   const [loading, setLoading] = useState(false);
   const [converting, setConverting] = useState(false);
@@ -32,22 +35,41 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage }: ImageGalleryP
 
   useEffect(() => {
     if (images.length === 0) {
+      // Revoke all existing URLs when clearing list
+      imageData.forEach(d => URL.revokeObjectURL(d.url));
       setImageData([]);
+      setLoading(false);
+      setLoadProgress(0);
       return;
     }
 
     setLoading(true);
     setLoadProgress(0);
-    setImageData([]);
 
-    const urlsToRevoke: string[] = [];
-    
+    const prevById = new Map(imageData.map(d => [d.id, d]));
+    const urlsToRevokeNew: string[] = [];
+    const idsInNext = new Set<string>();
+
     const loadImages = async () => {
+      const nextData: ImageData[] = [];
+      let loadedCount = 0;
+
       for (let i = 0; i < images.length; i++) {
         const file = images[i];
+        const id = createImageId(file);
+        idsInNext.add(id);
+
+        const prev = prevById.get(id);
+        if (prev) {
+          nextData.push({ ...prev, file });
+          loadedCount++;
+          setLoadProgress((loadedCount / images.length) * 100);
+          continue;
+        }
+
         const url = URL.createObjectURL(file);
-        urlsToRevoke.push(url);
-        
+        urlsToRevokeNew.push(url);
+
         try {
           // Get image dimensions
           const img = new Image();
@@ -57,55 +79,77 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage }: ImageGalleryP
             img.src = url;
           });
 
-          // Show immediately with default crop position
-          setImageData(prev => [
-            ...prev,
-            {
-              file,
-              url,
-              cropY: 0,
-              naturalWidth: img.naturalWidth,
-              naturalHeight: img.naturalHeight,
-            },
-          ]);
+          // Check persisted y
+          let persistedY: number | undefined = undefined;
+          try {
+            const rec = await getImageById(id);
+            if (typeof rec?.y === 'number') persistedY = rec.y;
+          } catch {}
 
-          // Fetch suggestion asynchronously and update cropY when available
-          suggestCrop(file)
-            .then((suggest) => {
-              const suggestedY = suggest?.y ?? 0;
-              setImageData(prev => prev.map(d => d.file === file ? { ...d, cropY: suggestedY } : d));
-            })
-            .catch(() => {
-              // keep default y=0
-            });
+          const initialData: ImageData = {
+            id,
+            file,
+            url,
+            cropY: persistedY ?? 0,
+            naturalWidth: img.naturalWidth,
+            naturalHeight: img.naturalHeight,
+          };
+          nextData.push(initialData);
 
-          setLoadProgress(((i + 1) / images.length) * 100);
+          // Fetch suggestion only if no persisted y
+          if (persistedY === undefined) {
+            suggestCrop(file)
+              .then((suggest) => {
+                const suggestedY = suggest?.y ?? 0;
+                setImageData(prev => prev.map(d => d.id === id ? { ...d, cropY: suggestedY } : d));
+                updateImageY(id, suggestedY).catch(() => {});
+              })
+              .catch(() => {
+                // ignore suggestion errors
+              });
+          }
+
+          loadedCount++;
+          setLoadProgress((loadedCount / images.length) * 100);
         } catch (error) {
           console.error('Failed to load image:', file.name, error);
           toast.error(`Failed to load ${file.name}`);
         }
       }
 
+      // Revoke URLs for items that were removed
+      for (const [prevId, prev] of prevById) {
+        if (!idsInNext.has(prevId)) {
+          URL.revokeObjectURL(prev.url);
+        }
+      }
+
+      setImageData(nextData);
       setLoading(false);
-      toast.success(`Loaded ${images.length} images successfully`);
+      const numNew = nextData.filter(d => !prevById.has(d.id)).length;
+      if (numNew > 0) {
+        toast.success(`Loaded ${numNew} new image${numNew === 1 ? '' : 's'} successfully`);
+      }
     };
 
     loadImages();
-    
-    // Cleanup URLs when component unmounts or images change
+
+    // Cleanup URLs created during this effect when images change/unmount
     return () => {
-      urlsToRevoke.forEach(url => URL.revokeObjectURL(url));
+      urlsToRevokeNew.forEach(url => URL.revokeObjectURL(url));
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [images]);
 
   // removed simulateBackendCropPosition in favor of real backend API
 
   const updateCropPosition = (index: number, cropY: number) => {
-    setImageData(prev => 
-      prev.map((data, i) => 
-        i === index ? { ...data, cropY } : data
-      )
-    );
+    setImageData(prev => {
+      const next = prev.map((data, i) => i === index ? { ...data, cropY } : data);
+      const id = next[index]?.id;
+      if (id) updateImageY(id, cropY).catch(() => {});
+      return next;
+    });
   };
 
   const handleConvert = async () => {
@@ -148,24 +192,31 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage }: ImageGalleryP
                 {imageData.length} images
               </Badge>
             </div>
-            
-            <Button 
-              onClick={handleConvert}
-              disabled={loading || imageData.length === 0 || converting}
-              className="min-w-[120px]"
-            >
-              {converting ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Converting...
-                </>
-              ) : (
-                <>
-                  <Check className="h-4 w-4 mr-2" />
-                  Convert All
-                </>
+            <div className="flex items-center gap-2">
+              {onClearAll && (
+                <Button type="button" variant="outline" onClick={onClearAll} disabled={loading || converting}>
+                  <Trash2 className="h-4 w-4 mr-2" />
+                  Clear All
+                </Button>
               )}
-            </Button>
+              <Button 
+                onClick={handleConvert}
+                disabled={loading || imageData.length === 0 || converting}
+                className="min-w-[120px]"
+              >
+                {converting ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Converting...
+                  </>
+                ) : (
+                  <>
+                    <Check className="h-4 w-4 mr-2" />
+                    Convert All
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
           
           {loading && (
@@ -184,7 +235,7 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage }: ImageGalleryP
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
               {imageData.map((data, index) => (
                 <ImageCropPreview
-                  key={data.file.name}
+                  key={data.id}
                   imageData={data}
                   onCropPositionChange={(cropY) => updateCropPosition(index, cropY)}
                   onRemove={() => onRemoveImage?.(index)}
