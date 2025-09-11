@@ -246,3 +246,11 @@ You can serve the frontend’s `dist/` with any static web server (or a CDN) and
 
 - “CORS” errors in production
   - In dev, the Vite proxy avoids CORS. For non‑proxy deployments, enable/configure CORS in the backend and ensure your frontend points to the correct API origin.
+
+## License
+
+This project is licensed under the Apache License 2.0. See [LICENSE](./LICENSE.md) for the full text and [NOTICE](./NOTICE.md) for attribution requirements.
+
+## Attribution and notifications
+
+If you use or redistribute this project, please include attribution to “Image Crop Craft” as described in [NOTICE](./NOTICE.md). We’d also love to hear about your use—feel free to open an issue or PR in this repository to share what you built.
