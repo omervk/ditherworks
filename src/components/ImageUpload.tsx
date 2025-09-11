@@ -21,7 +21,7 @@ export const ImageUpload = ({ onImagesLoaded }: ImageUploadProps) => {
   const { getRootProps, getInputProps, open } = useDropzone({
     onDrop,
     accept: {
-      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp']
+      'image/*': ['.png', '.jpg', '.jpeg', '.gif', '.bmp', '.webp', '.heic', '.heif']
     },
     noClick: true,
     onDragEnter: () => setIsDragActive(true),
@@ -92,7 +92,7 @@ export const ImageUpload = ({ onImagesLoaded }: ImageUploadProps) => {
           </div>
           
           <p className="text-xs text-muted-foreground">
-            Supports PNG, JPG, JPEG, GIF, BMP, WebP
+            Supports PNG, JPG, JPEG, GIF, BMP, WebP, HEIC, HEIF
           </p>
         </div>
       </div>
