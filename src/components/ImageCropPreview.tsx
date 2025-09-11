@@ -206,11 +206,6 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: 
                   <div className="absolute -top-2 left-1/2 transform -translate-x-1/2 w-12 h-3 bg-primary rounded-b-md shadow-sm" />
                   <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2 w-12 h-3 bg-primary rounded-t-md shadow-sm" />
                   
-                  {/* Crop info */}
-                  <div className="absolute top-2 left-2 bg-primary text-primary-foreground px-3 py-1 rounded-md text-xs font-semibold shadow-sm">
-                    800×480
-                  </div>
-                  
                   {/* Corner indicators */}
                   <div className="absolute top-1 left-1 w-2 h-2 bg-primary rounded-full" />
                   <div className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full" />
@@ -224,7 +219,6 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: 
           {/* Dimensions info */}
           <div className="flex items-center justify-between text-xs text-muted-foreground">
             <span>Original: {imageData.naturalWidth}×{imageData.naturalHeight}</span>
-            <span>Crop Y: {Math.round(cropY)}px</span>
           </div>
         </div>
       </CardContent>
