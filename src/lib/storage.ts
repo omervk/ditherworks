@@ -11,7 +11,7 @@ export type StoredImageRecord = {
   y?: number;
 };
 
-const DB_NAME = 'image-crop-craft';
+const DB_NAME = 'ditherworks';
 const DB_VERSION = 1;
 const STORE = 'images';
 

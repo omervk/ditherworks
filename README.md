@@ -1,4 +1,4 @@
-# Image Crop Craft
+# DitherWorks for PhotoPainter
 
 Local‑first batch image cropper and converter for a fixed 800×480 output. Load a folder of images, preview a fixed‑aspect crop, nudge the vertical position, and convert everything in one go. The backend streams a ZIP of 16‑bit RGB565 BMPs with Floyd–Steinberg dithering — ideal for small TFT devices (e.g., PhotoPainter).
 
@@ -253,4 +253,4 @@ This project is licensed under the Apache License 2.0. See [LICENSE](./LICENSE.m
 
 ## Attribution and notifications
 
-If you use or redistribute this project, please include attribution to “Image Crop Craft” as described in [NOTICE](./NOTICE.md). We’d also love to hear about your use—feel free to open an issue or PR in this repository to share what you built.
+If you use or redistribute this project, please include attribution to “DitherWorks for PhotoPainter” as described in [NOTICE](./NOTICE.md). We’d also love to hear about your use—feel free to open an issue or PR in this repository to share what you built.

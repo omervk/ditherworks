@@ -1,5 +1,6 @@
 {
-  "name": "vite_react_shadcn_ts",
+  "name": "ditherworks",
+  "description": "Local-first batch crop + RGB565 dithering to 800x480 for PhotoPainter.",
   "private": true,
   "version": "0.0.0",
   "type": "module",

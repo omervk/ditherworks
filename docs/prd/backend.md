@@ -1,4 +1,4 @@
-# Image Crop Craft — Backend PRD
+# DitherWorks for PhotoPainter — Backend PRD
 
 ## 1. Purpose & Scope
 - Provide a local-first backend to:
