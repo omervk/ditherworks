@@ -38,23 +38,23 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: I
   const [downloadFinished, setDownloadFinished] = useState(false);
 
   useEffect(() => {
-    if (images.length === 0) {
-      // Revoke all existing URLs when clearing list
-      imageData.forEach(d => URL.revokeObjectURL(d.url));
-      setImageData([]);
-      setLoading(false);
-      setLoadProgress(0);
-      return;
-    }
-
-    setLoading(true);
-    setLoadProgress(0);
-
     const prevById = new Map(imageData.map(d => [d.id, d]));
     const urlsToRevokeNew: string[] = [];
     const idsInNext = new Set<string>();
 
     const loadImages = async () => {
+      setLoading(true);
+      setLoadProgress(0);
+
+      if (images.length === 0) {
+        // Revoke all existing URLs when clearing list
+        for (const [, prev] of prevById) URL.revokeObjectURL(prev.url);
+        setImageData([]);
+        setLoading(false);
+        setLoadProgress(0);
+        return;
+      }
+
       const nextData: ImageData[] = [];
       let loadedCount = 0;
 

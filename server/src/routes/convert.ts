@@ -1,5 +1,5 @@
 import { FastifyInstance } from 'fastify';
-import archiver from 'archiver';
+import { ZipArchive } from 'archiver';
 import { convertToBmp565WithDither } from '../lib/image';
 import { startJob, reportProgress, completeJob, errorJob } from '../lib/progress';
 
@@ -68,7 +68,7 @@ export async function registerConvertRoute(app: FastifyInstance) {
     reply.header('Content-Type', 'application/zip');
     reply.header('Content-Disposition', 'attachment; filename="converted.zip"');
 
-    const archive = archiver('zip', { zlib: { level: 9 } });
+    const archive = new ZipArchive({ zlib: { level: 9 } });
     archive.on('warning', (err: unknown) => req.log.warn({ err }, 'zip warning'));
     archive.on('error', (err: unknown) => {
       req.log.error({ err }, 'zip error');

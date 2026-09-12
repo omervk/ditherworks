@@ -22,13 +22,14 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: 
   const imageAspect = imageData.naturalWidth / imageData.naturalHeight;
   const isFullWidthMode = imageAspect <= CROP_ASPECT_RATIO; // matches server logic
 
-  // Update crop position when imageData changes
-  useEffect(() => {
+  // Adjust cropY when imageData changes (React-recommended pattern instead of useEffect)
+  const [prevCropY, setPrevCropY] = useState(imageData.cropY);
+  if (imageData.cropY !== prevCropY) {
+    setPrevCropY(imageData.cropY);
     const naturalCropHeight = imageData.naturalWidth / CROP_ASPECT_RATIO;
     const naturalMaxY = Math.max(0, imageData.naturalHeight - naturalCropHeight);
-    const clamped = Math.max(0, Math.min(naturalMaxY, imageData.cropY));
-    setCropY(clamped);
-  }, [imageData.cropY, imageData.naturalWidth, imageData.naturalHeight]);
+    setCropY(Math.max(0, Math.min(naturalMaxY, imageData.cropY)));
+  }
 
   // Calculate display dimensions and crop rectangle
   const updateDimensions = useCallback(() => {

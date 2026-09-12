@@ -36,9 +36,9 @@ export async function convertToBmp565WithDither(input: Buffer, cropY: number): P
   const fullWidthCropHeight = Math.floor(naturalWidth / TARGET_ASPECT);
 
   let extractLeft = 0;
-  let extractTop = 0;
+  let extractTop: number;
   let extractWidth = naturalWidth;
-  let extractHeight = 0;
+  let extractHeight: number;
 
   if (fullWidthCropHeight <= naturalHeight) {
     // Full-width crop fits; allow vertical positioning via cropY
