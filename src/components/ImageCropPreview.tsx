@@ -66,7 +66,7 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: 
   }, [updateDimensions]);
 
   // Calculate crop rectangle dimensions and position
-  const getCropRectangle = () => {
+  const getCropRectangle = useCallback(() => {
     if (displayDimensions.width === 0 || displayDimensions.height === 0) return null;
 
     if (isFullWidthMode) {
@@ -87,7 +87,7 @@ export const ImageCropPreview = ({ imageData, onCropPositionChange, onRemove }: 
     const x = Math.max(0, (displayDimensions.width - cropWidth) / 2);
     const rect = { width: cropWidth, height: cropHeight, x, y: 0, maxY: 0 } as const;
     return rect;
-  };
+  }, [displayDimensions, isFullWidthMode, cropY, imageData.naturalHeight]);
 
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     e.preventDefault();

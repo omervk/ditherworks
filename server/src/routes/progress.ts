@@ -13,7 +13,7 @@ export async function registerProgressRoute(app: FastifyInstance) {
     const cleanup = subscribe(jobId, reply.raw);
 
     // Flush headers and a comment to open the stream
-    try { reply.raw.write(': connected\n\n'); } catch {}
+    try { reply.raw.write(': connected\n\n'); } catch { /* client may have disconnected */ }
 
     // Clean up when client disconnects
     reply.raw.on('close', () => {

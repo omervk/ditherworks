@@ -72,13 +72,13 @@ export async function registerConvertRoute(app: FastifyInstance) {
     archive.on('warning', (err: unknown) => req.log.warn({ err }, 'zip warning'));
     archive.on('error', (err: unknown) => {
       req.log.error({ err }, 'zip error');
-      try { archive.destroy(); } catch {}
+      try { archive.destroy(); } catch { /* already destroyed */ }
       if (!reply.sent) {
         // If streaming hasn't started, return JSON error
         reply.code(500).type('application/json').send({ error: 'zip error' });
       } else {
         // If streaming already started, just destroy the connection
-        try { reply.raw.destroy(err as Error); } catch {}
+        try { reply.raw.destroy(err as Error); } catch { /* already destroyed */ }
       }
     });
 
@@ -90,11 +90,11 @@ export async function registerConvertRoute(app: FastifyInstance) {
     // When HTTP response finishes sending, mark job complete for SSE consumers
     if (jobId) {
       reply.raw.once('finish', () => {
-        try { completeJob(jobId); } catch {}
+        try { completeJob(jobId); } catch { /* job may already be cleaned up */ }
       });
       reply.raw.once('close', () => {
         // If connection closed before finish and job still active, mark as error
-        try { errorJob(jobId, 'download connection closed'); } catch {}
+        try { errorJob(jobId, 'download connection closed'); } catch { /* job may already be cleaned up */ }
       });
     }
 
@@ -130,7 +130,7 @@ export async function registerConvertRoute(app: FastifyInstance) {
       await archive.finalize();
     } catch (err) {
       req.log.error({ err }, 'convert failed');
-      try { archive.destroy(); } catch {}
+      try { archive.destroy(); } catch { /* already destroyed */ }
       if (!reply.sent) {
         return reply
           .code(500)
@@ -138,7 +138,7 @@ export async function registerConvertRoute(app: FastifyInstance) {
           .send({ error: 'conversion failed' });
       }
       // If already streaming, ensure the socket is closed
-      try { reply.raw.destroy(err as Error); } catch {}
+      try { reply.raw.destroy(err as Error); } catch { /* already destroyed */ }
       return; // do not return reply instance
     }
 

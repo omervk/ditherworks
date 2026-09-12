@@ -43,7 +43,7 @@ export function subscribe(jobId: string, res: ServerResponse) {
     const j = jobs.get(jobId);
     if (j) {
       j.listeners.delete(res);
-      try { res.end(); } catch {}
+      try { res.end(); } catch { /* client may have already disconnected */ }
       if (j.listeners.size === 0 && (j.status === 'completed' || j.status === 'error')) {
         jobs.delete(jobId);
       }
@@ -82,7 +82,7 @@ export function completeJob(jobId: string) {
   for (const l of job.listeners) writeSseEvent(l, evt);
   // End all listeners and cleanup
   for (const l of job.listeners) {
-    try { l.end(); } catch {}
+    try { l.end(); } catch { /* listener may have already disconnected */ }
   }
   jobs.delete(jobId);
 }
@@ -94,7 +94,7 @@ export function errorJob(jobId: string, message: string) {
   const evt: ProgressEvent = { type: 'error', current: job.current, total: job.total, message };
   for (const l of job.listeners) writeSseEvent(l, evt);
   for (const l of job.listeners) {
-    try { l.end(); } catch {}
+    try { l.end(); } catch { /* listener may have already disconnected */ }
   }
   jobs.delete(jobId);
 }

@@ -88,7 +88,7 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: I
           try {
             const rec = await getImageById(id);
             if (typeof rec?.y === 'number') persistedY = rec.y;
-          } catch {}
+          } catch { /* IndexedDB may be unavailable */ }
 
           const initialData: ImageData = {
             id,
@@ -164,9 +164,7 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: I
     setDownloadFinished(false);
 
     // Create jobId for backend progress tracking
-    const jobId = (globalThis as any).crypto?.randomUUID
-      ? (globalThis as any).crypto.randomUUID()
-      : `${Date.now().toString(36)}_${Math.random().toString(36).slice(2)}`;
+    const jobId = crypto.randomUUID();
 
     let es: EventSource | null = null;
     try {
@@ -177,7 +175,7 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: I
           const data = JSON.parse(e.data) as { current: number; total: number };
           setConvertTotal(data.total || imageData.length);
           setConvertedCount(data.current || 0);
-        } catch {}
+        } catch { /* malformed SSE data */ }
       });
       es.addEventListener('progress', (e: MessageEvent) => {
         try {
@@ -185,7 +183,7 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: I
           setConvertTotal(data.total || imageData.length);
           setCurrentFile(data.fileName || null);
           setConvertedCount(data.current || 0);
-        } catch {}
+        } catch { /* malformed SSE data */ }
       });
       es.addEventListener('complete', () => {
         setConvertedCount((prev) => Math.max(prev, convertTotal || imageData.length));
@@ -193,9 +191,9 @@ export const ImageGallery = ({ images, onConvert, onRemoveImage, onClearAll }: I
       es.addEventListener('error', (e: MessageEvent) => {
         // Either connection issue or server-sent error; show toast if message provided
         try {
-          const data = JSON.parse((e as any).data || '{}') as { message?: string };
+          const data = JSON.parse(e.data || '{}') as { message?: string };
           if (data.message) toast.error(data.message);
-        } catch {}
+        } catch { /* malformed SSE data */ }
       });
 
       await onConvert(imageData, jobId);

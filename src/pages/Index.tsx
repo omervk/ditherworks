@@ -30,7 +30,7 @@ const Index = () => {
   const handleImagesLoaded = async (files: File[]) => {
     try {
       await upsertImages(files);
-    } catch {}
+    } catch { /* IndexedDB may be unavailable */ }
     setImages((prev) => {
       const byId = new Map(prev.map((f) => [createImageId(f), f]));
       for (const f of files) byId.set(createImageId(f), f);
@@ -62,7 +62,7 @@ const Index = () => {
   const handleClearAll = async () => {
     try {
       await clearAllImages();
-    } catch {}
+    } catch { /* IndexedDB may be unavailable */ }
     setImages([]);
     toast.message('Cleared all images');
   };
